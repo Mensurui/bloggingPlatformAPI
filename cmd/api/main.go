@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Mensurui/bloggingPlatformAPI/internals/data"
 	_ "github.com/lib/pq"
 )
 
@@ -26,6 +27,7 @@ type config struct {
 type application struct {
 	config config
 	logger *log.Logger
+	models data.Models
 }
 
 func main() {
@@ -37,9 +39,17 @@ func main() {
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
+	db, err := openDB(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	logger.Printf("database connection established")
+
 	app := application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	srv := &http.Server{
@@ -51,13 +61,6 @@ func main() {
 	}
 
 	logger.Printf("starting %s server on %s", cfg.env, srv.Addr)
-
-	db, err := openDB(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-	logger.Printf("database connection established")
 
 	err = srv.ListenAndServe()
 	logger.Fatal(err)

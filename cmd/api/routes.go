@@ -7,9 +7,10 @@ import (
 
 func (app *application) routes() *httprouter.Router {
 	route := httprouter.New()
-	route.HandlerFunc(http.MethodGet, "/v1/bloglist", app.blogList)
-	route.HandlerFunc(http.MethodGet, "/v1/blog/:id", app.blog)
-	route.HandlerFunc(http.MethodPost, "/v1/blog", app.createMovieHandler)
+	route.HandlerFunc(http.MethodPost, "/v1/blog", app.blogCreateHandler)
+	route.HandlerFunc(http.MethodGet, "/v1/blog/:id", app.showBlogHandler)
+	route.HandlerFunc(http.MethodPut, "/v1/blog/:id", app.updateBlogHandler)
+	route.HandlerFunc(http.MethodDelete, "/v1/blog/:id", app.deleteBlogHandler)
 
 	return route
 }
