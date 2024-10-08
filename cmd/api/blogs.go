@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Mensurui/bloggingPlatformAPI/internals/data"
+	"github.com/Mensurui/bloggingPlatformAPI/internals/data/validator"
 )
 
 func (app *application) blogCreateHandler(w http.ResponseWriter, r *http.Request) {
@@ -91,8 +92,8 @@ func (app *application) updateBlogHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	var input struct {
-		Title   string   `json:"title"`
-		Content string   `json:"content"`
+		Title   *string  `json:"title"`
+		Content *string  `json:"content"`
 		Tag     []string `json:"tag"`
 	}
 
@@ -102,9 +103,16 @@ func (app *application) updateBlogHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	blog.Title = input.Title
-	blog.Content = input.Content
-	blog.Tag = input.Tag
+	if input.Title != nil {
+		blog.Title = *input.Title
+	}
+
+	if input.Content != nil {
+		blog.Content = *input.Content
+	}
+	if input.Tag != nil {
+		blog.Tag = input.Tag
+	}
 
 	err = app.models.Blogs.Update(blog)
 	if err != nil {
@@ -142,4 +150,37 @@ func (app *application) deleteBlogHandler(w http.ResponseWriter, r *http.Request
 		app.serverErrorResponse(w, r, err)
 	}
 
+}
+
+func (app *application) listBlogHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Title string
+		data.Filters
+	}
+
+	v := validator.New()
+
+	qs := r.URL.Query()
+	input.Title = app.readString(qs, "title", "")
+
+	input.Page = app.readInt(qs, "page", 1, v)
+	input.PageSize = app.readInt(qs, "page_size", 20, v)
+	input.Sort = app.readString(qs, "sort", "id")
+	input.SortSafelist = []string{"id", "title", "content", "-id", "-title", "-content"}
+
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	blogs, err := app.models.Blogs.GetAll(input.Title) // Pass the title filter here
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, blogs, nil)
+	if err != nil {
+		app.methodNotAllowedResponse(w, r)
+	}
 }

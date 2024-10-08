@@ -83,6 +83,54 @@ func (b *BlogModel) Get(id int64) (*Blog, error) {
 	return &blog, nil
 }
 
+func (b *BlogModel) GetAll(title string) ([]*Blog, error) {
+	var query string
+	var args []interface{}
+
+	// Build the base query
+	query = `
+	SELECT id, title, content, tag, created_at, updated_at
+	FROM blog`
+
+	// If a title filter is provided, add it to the query
+	if title != "" {
+		query += ` WHERE title ILIKE $1`
+		args = append(args, "%"+title+"%") // Use ILIKE for case-insensitive search
+	}
+
+	query += ` ORDER BY id`
+
+	blogs := []*Blog{}
+	rows, err := b.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close() // Ensure rows are closed
+
+	for rows.Next() {
+		var blog Blog
+		err := rows.Scan(
+			&blog.ID,
+			&blog.Title,
+			&blog.Content,
+			pq.Array(&blog.Tag),
+			&blog.CreatedAt,
+			&blog.UpdatedAt,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+		blogs = append(blogs, &blog)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return blogs, nil
+}
+
 func (b *BlogModel) Delete(id int64) error {
 	if id < 1 {
 		return ErrorRecordNotFound
